@@ -1,89 +1,176 @@
-# Máquina Enigma en Python
+# Máquina Enigma - Implementación en Python
 
-Este proyecto es una simulación de la famosa máquina Enigma, creada con el lenguaje de programación Python. La Enigma era un dispositivo electromecánico usado para cifrar y descifrar mensajes secretos durante la Segunda Guerra Mundial. Su seguridad se basaba en un sistema complejo de rotores intercambiables y un reflector.
+Se implementa una simulación funcional de la máquina Enigma, el dispositivo de cifrado utilizado durante la Segunda Guerra Mundial. El programa está escrito íntegramente en Python y reproduce el comportamiento matemático y mecánico del sistema original, permitiendo cifrar y descifrar mensajes mediante un sistema de rotores y reflector.
 
-Nuestra versión en Python reproduce esa lógica usando matemáticas y programación orientada a objetos. El objetivo es que puedas entender paso a paso cómo funciona este sistema de cifrado y cómo se ha traducido a código.
+### Objetivo del Programa
+El programa permite a cualquier usuario introducir un mensaje de texto y una clave de cifrado para obtener una versión cifrada del mensaje original. Gracias a la propiedad recíproca de la máquina Enigma, el mismo procedimiento y la misma clave permiten recuperar el mensaje original a partir del texto cifrado.
 
----
+### Fundamentos Matemáticos
+El sistema trabaja con el alfabeto inglés de 26 letras mayúsculas. Cada letra se representa mediante un número según su posición en el alfabeto:
 
-## El Alfabeto en Números
+A = 0, B = 1, C = 2, ..., Z = 25
 
-Para que una computadora pueda trabajar con letras, primero tenemos que convertirlas a números. En este caso, usamos el alfabeto inglés de 26 letras mayúsculas y le asignamos a cada una un número:
+Todas las transformaciones utilizan aritmética modular con módulo 26, lo que garantiza que cualquier operación permanezca dentro del rango válido del alfabeto. Cuando un resultado supera el valor 25, se aplica el módulo para obtener un valor entre 0 y 25, manteniendo la coherencia del sistema.
 
-| Letra | Número |
-|-------|--------|
-| A     | 0      |
-| B     | 1      |
-| C     | 2      |
-| ...   | ...    |
-| Z     | 25     |
+### Estructura de la Clase EnigmaMachine
+La clase EnigmaMachine encapsula toda la lógica de la máquina. Sus atributos principales son:
 
-Todas las operaciones de cifrado se hacen con estos números y se utiliza la **aritmética modular**. Esto significa que siempre que el resultado de una operación se salga del rango 0-25, se le da la vuelta como si fuera un reloj de 26 horas. Esto se representa con la operación **módulo 26** y nos asegura que siempre obtengamos una letra válida.
+rotor_I, rotor_II, rotor_III, rotor_IV: Cadenas de 26 caracteres que representan el cableado interno de cada rotor. Cada posición en la cadena indica qué letra de salida corresponde a la letra de entrada en esa posición.
 
----
+reflector: Cadena de 26 caracteres que define los pares de letras que se intercambian simétricamente.
 
-## Los Componentes
+alphabet: Cadena con el alfabeto en orden, utilizada para conversiones entre letras y números.
 
-Imagina que la letra que quieres cifrar es un pequeño explorador que viaja por un circuito eléctrico dentro de la máquina. En su viaje, se encontrará con estos elementos:
+rotor_position: Lista de cuatro números que almacena la posición actual de cada rotor.
 
-### 1. Los Rotores
-Son ruedas con 26 contactos, uno por cada letra, pero con un cableado interno que las desordena. Cada rotor tiene dos caras: la de entrada y la de salida. Cuando una letra entra al rotor, la conexión interna la transforma en una letra diferente. Además de esto, los rotores giran como el cuentakilómetros de un coche: después de cifrar cada letra, el primer rotor avanza una posición.
+### Métodos Principales
+#### Métodos de Validación
+##### validate_config(self, config)
+Este método verifica que una configuración de rotor o reflector sea válida. Comprueba tres condiciones:
 
-### 2. El Reflector
-Es como un espejo especial. Al final del camino, el explorador llega al reflector, que lo devuelve por un camino diferente pero relacionado. El reflector conecta pares de letras: por ejemplo, si la letra A entra, podría salir como Z, y si entra Z, saldría como A. Esta conexión es fija y simétrica.
+La configuración debe tener exactamente 26 caracteres
 
-### 3. El Tablero de Conexiones (En nuestro caso, la clave)
-Para que la máquina funcione, los rotores deben empezar en una posición concreta. Esa posición inicial es lo que llamamos **clave**. En este programa, la clave es una palabra de cuatro letras como por ejemplo **CVEA**. Cada letra indica la posición de arranque de un rotor:
+Todos los caracteres deben ser letras
 
-- **C** define el punto de partida del Rotor I
-- **V** define el punto de partida del Rotor II
-- **E** define el punto de partida del Rotor III
-- **A** define el punto de partida del Rotor IV
+No puede haber letras repetidas
 
----
+Estas validaciones son necesarias porque los rotores deben contener cada letra exactamente una vez para que el cifrado sea biyectivo.
 
-## El Viaje de una Letra: Paso a Paso
+### Métodos de Modificación
+modify_rotor(self, rotor_number, new_config)
+Permite cambiar la configuración interna de un rotor específico. Recibe el número del rotor (1 al 4) y la nueva configuración como cadena de texto. Antes de aplicar el cambio, valida la configuración usando el método anterior.
 
-Vamos a seguir a nuestro explorador (la letra que queremos cifrar) en su recorrido:
+### modify_reflector(self, new_config)
+Similar al método anterior, pero modifica la configuración del reflector. También realiza las validaciones correspondientes.
 
-1.  **Conversión:** La letra se convierte en su número correspondiente (por ejemplo, la A se convierte en 0).
+### Generación de Posiciones Iniciales
+#### generate_positions_from_key(self, key)
+Este método transforma la clave de texto en las posiciones iniciales de los rotores. El proceso sigue estas reglas:
 
-2.  **A través de los rotores (Ida):** La señal entra en el primer rotor. Primero se suma la posición actual de ese rotor para saber dónde conecta. Después, el cableado interno del rotor transforma ese número en otro completamente distinto. Este proceso se repite con el segundo, tercer y cuarto rotor, en ese orden.
+- La clave puede tener cualquier longitud, pero el programa está optimizado para claves de hasta 4 caracteres
 
-3.  **El Rebote en el Reflector:** Al salir del último rotor, la señal llega al reflector. El reflector intercambia el número por su pareja predefinida.
+- Cada carácter se convierte a su valor numérico según el alfabeto
 
-4.  **El Viaje de Vuelta (Rotores Inversos):** Ahora la señal emprende el camino de regreso, pero esta vez a través de los rotores en orden inverso: cuarto, tercero, segundo y primero. En esta dirección, primero se aplica el cableado inverso del rotor y luego se resta la posición en la que se encontraba ese rotor en ese momento.
+- La posición del rotor I se calcula sumando los valores en posiciones pares de la clave y aplicando módulo 26
 
-5.  **Letra Cifrada:** El número que obtenemos al final del viaje se convierte de nuevo en una letra, y esa es la letra cifrada.
+- La posición del rotor II se calcula sumando los valores en posiciones impares de la clave y aplicando módulo 26
 
----
+- La posición del rotor III es la suma de todos los valores de la clave módulo 26
 
-## La Propiedad Recíproca
+- La posición del rotor IV es la longitud de la clave módulo 26
 
-Lo fascinante de este diseño es que es **recíproco**. Esto significa que el proceso es exactamente el mismo para cifrar que para descifrar. Si le das un mensaje cifrado a la máquina y usas la misma clave de inicio, el viaje que hará cada letra la devolverá a su forma original.
+Este método devuelve una lista con las cuatro posiciones calculadas.
 
----
+### Cifrado de un Carácter
+#### encrypt_char(self, char)
+Este método implementa el núcleo del algoritmo de cifrado para un solo carácter. El proceso sigue estos pasos:
 
-## La Rotación de los Rotores
+- Conversión inicial: El carácter de entrada se convierte a su valor numérico según el alfabeto.
 
-Lo que hace a Enigma tan especial es que los rotores se mueven:
+- Camino de ida a través de los rotores: Para cada rotor en orden (I, II, III, IV):
 
-- Después de cifrar cada letra, el **primer rotor avanza una posición**.
-- Cuando el primer rotor da una vuelta completa (de 26 pasos), hace que el **segundo rotor avance una posición**.
-- Y así sucesivamente, como los dígitos de un cuentakilómetros.
+- Se suma la posición actual del rotor al valor de la letra, aplicando módulo 26. Esto simula el desplazamiento del rotor.
 
-Esto significa que la misma letra en el mensaje original se cifrará de forma diferente cada vez que aparezca, porque los rotores están en una posición distinta. Esto se conoce como **cifrado polialfabético** y era lo que hacía tan difícil descifrar los mensajes Enigma sin conocer la clave inicial.
+- Se aplica el cableado interno del rotor: el valor obtenido se usa como índice para encontrar la letra de salida en la configuración del rotor.
 
----
+- Esa letra se convierte nuevamente a su valor numérico.
 
-## Funcionamiento
+- Se resta la posición del rotor para compensar el desplazamiento inicial, aplicando módulo 26.
 
-Todo el funcionamiento de la máquina está organizado dentro de una única clase en Python llamada **`EnigmaMachine`**. Esta clase guarda toda la información importante: la configuración de los rotores, la del reflector, el alfabeto y, lo más importante, la posición actual de cada rotor en cada momento.
+- Reflector: El valor obtenido después de pasar por todos los rotores se usa como índice para encontrar la letra correspondiente en el reflector. Esa letra se convierte a su valor numérico.
 
-Dentro de esta clase, hay **métodos** (funciones) que realizan tareas específicas:
+- Camino de regreso a través de los rotores: Se recorren los rotores en orden inverso (IV, III, II, I):
 
-- **`encrypt_char`:** Es el método que sabe exactamente cómo guiar a una **sola letra** a través de todo el viaje que hemos descrito.
-- **`encrypt_message`:** Se encarga de coger un **mensaje completo**, letra por letra. Para cada letra, llama a `encrypt_char` y luego actualiza la posición de los rotores para la siguiente letra.
-- **`decrypt_message`:** Hace exactamente lo mismo que `encrypt_message`. Gracias a la propiedad recíproca, cifrar y descifrar son la misma operación.
+- Se suma la posición actual del rotor.
 
-Además, el programa incluye un menú sencillo en la consola para que puedas interactuar con él: cifrar mensajes, cambiar la clave o las configuraciones de los rotores.
+- Se busca la posición de la letra actual dentro de la configuración del rotor para obtener la letra equivalente en el camino inverso.
+
+- Esa letra se convierte a su valor numérico.
+
+- Se resta la posición del rotor.
+
+- Resultado final: El número obtenido se convierte a su letra correspondiente en el alfabeto y se devuelve como carácter cifrado.
+
+### Cifrado de Mensajes Completos
+#### encrypt_message(self, message, key)
+Este método coordina el cifrado de un mensaje completo:
+
+- Genera las posiciones iniciales de los rotores a partir de la clave proporcionada.
+
+- Inicializa el estado de la máquina con esas posiciones.
+
+- Procesa cada carácter del mensaje:
+
+- Si el carácter es una letra, primero actualiza las posiciones de los rotores según el mecanismo de avance, luego cifra el carácter individualmente.
+
+- Si el carácter no es una letra (espacios, números, signos de puntuación), lo mantiene sin cambios en el mensaje cifrado.
+
+- Devuelve el mensaje completo cifrado.
+
+- El mecanismo de avance de rotores simula el funcionamiento de un odómetro:
+
+- El rotor I avanza una posición después de cada letra cifrada
+
+- Cuando el rotor I completa una vuelta (vuelve a posición 0), el rotor II avanza una posición
+
+- Cuando el rotor II completa una vuelta, el rotor III avanza una posición
+
+- Cuando el rotor III completa una vuelta, el rotor IV avanza una posición
+
+- Este sistema de rotación progresiva es lo que hace que el cifrado sea polialfabético, produciendo diferentes resultados para la misma letra en diferentes posiciones del mensaje.
+
+### Descifrado
+#### decrypt_message(self, message, key)
+Este método simplemente llama a encrypt_message con los mismos parámetros. La propiedad recíproca de la máquina Enigma garantiza que el proceso de cifrado y descifrado sea idéntico. Si se introduce un mensaje cifrado con la misma clave que se usó para cifrarlo, el resultado será el mensaje original.
+
+### Interfaz de Usuario
+#### display_menu(self)
+Muestra un menú con las opciones disponibles para el usuario.
+
+### run(self)
+- Implementa el bucle principal del programa que:
+
+- Muestra el menú
+
+- Captura la opción seleccionada por el usuario
+
+- Ejecuta la acción correspondiente (cifrar, descifrar, configurar rotores, salir)
+
+- Maneja los errores de entrada y muestra los resultados
+
+### Flujo de Ejecución
+Cuando el usuario ejecuta el programa, ocurre lo siguiente:
+
+- Se crea una instancia de la clase EnigmaMachine con las configuraciones predeterminadas de rotores y reflector.
+
+- Se inicia el bucle del menú principal.
+
+- El usuario selecciona una opción:
+
+- Para cifrar o descifrar, ingresa el mensaje y la clave, y el programa muestra el resultado.
+
+- Para configurar rotores, puede modificar cualquiera de los cuatro rotores o el reflector ingresando nuevas configuraciones.
+
+- Para salir, termina la ejecución.
+
+El programa continúa en bucle hasta que el usuario elige salir.
+
+**Consideraciones Técnicas**
+- Manejo de Errores
+- El programa incluye validaciones para:
+
+- Claves que contienen caracteres no alfabéticos
+
+- Configuraciones de rotores con longitud incorrecta
+
+- Configuraciones con caracteres repetidos
+
+- Opciones de menú inválidas
+
+En todos los casos, muestra mensajes descriptivos y permite al usuario intentar nuevamente sin interrumpir la ejecución.
+
+### Preservación de Caracteres No Alfabéticos
+El programa mantiene intactos los espacios, números y signos de puntuación en el mensaje cifrado. Solo las letras son transformadas, lo que permite que la estructura del mensaje original se conserve y el texto cifrado sea legible en términos de formato.
+
+Flexibilidad de la Clave
+Aunque el sistema está optimizado para claves de hasta 4 caracteres, acepta cualquier longitud. Para claves más largas, los cálculos de posición utilizan sumas y la longitud total, distribuyendo la información de la clave entre los cuatro rotores.
